@@ -1,0 +1,150 @@
+readerobj = VideoReader('e.avi', 'tag', 'arena');  %reading video from folder
+lastframe=read(readerobj, get(readerobj,'NumberOfFrames') );
+secondlast=read(readerobj,get(readerobj,'NumberOfFrames')-5) ;
+firstframe=read(readerobj,1);
+
+radius=16 ;width=10;                                                      % to get the middle two values of x coordintes which will be used in reflection later
+leftb=10 ;
+rightb=790;                                                    % taking x coordinated of left boundary and right boundary 
+yspan=40;xspan=66;
+lengthofarena=800 ;effL=lengthofarena-2*(radius+width);
+ratio=3.35;             % ratio is the ratio of actual to virtual distance
+ratio2=3.35;
+
+paddleT=imread('paddleT.png');                                 % templates
+ballT=imread('ballT.png');
+b=imread('brickT.png');
+
+cc=normxcorr2(paddleT(:,:,1),lastframe(:,:,1));                % paddle detection
+[m,location]=max(abs(cc(:)));
+[y,x]=ind2sub(size(cc),location);
+paddletop=y-36;
+paddlecenter=x-68;
+
+
+cc1=normxcorr2(ballT(:,:,2),lastframe(:,:,2));                 % ball detection 
+cc2=normxcorr2(ballT(:,:,2),secondlast(:,:,2));
+[m1,location1]=max(abs(cc1(:)));
+[y1,x1]=ind2sub(size(cc1),location1);
+[m2,location2]=max(abs(cc2(:)));
+[y2,x2]=ind2sub(size(cc2),location2);
+c1x=x1-19;c1y=y1-18;
+c2x=x2-19;c2y=y2-18;
+
+
+b_direction=(y2-y1)/(x2-x1);                                   % ball direction
+ 
+if b_direction>0
+
+	finaly=paddletop-radius;
+	finalx=(finaly-c1y)/b_direction+ c1x- (radius+width);
+	n=finalx/effL;n=floor(n);
+	R=rem(finalx,effL);
+	coll=rem(n,2);
+	
+	if(coll==0)
+		new_pos=(radius+width)+R;
+	else
+		new_pos=lengthofarena-(radius+width)-R;
+	end
+			
+end
+
+if b_direction<0                                               % paddle movement
+
+	b_direction=abs(b_direction);
+	c1x=lengthofarena-c1x;
+	finaly=paddletop-radius;
+	finalx=(finaly-c1y)/b_direction+ c1x- (radius+width);
+	n=finalx/effL;n=floor(n);
+	R=rem(finalx,effL);
+	coll=rem(n,2);
+	
+	if(coll==0)
+		new_pos=lengthofarena-(radius+width)-R;
+		
+	else
+		new_pos=(radius+width)+R;
+	end
+	b_direction = -(b_direction);
+end 
+
+
+
+                                       %% brick detection starts
+
+diff_im = imsubtract(b(:,:,3), rgb2gray(b));
+    diff_im=medfilt2(diff_im,[3 3]);
+    diff_im=im2bw(diff_im,0.1);
+    diff_im=bwareaopen(diff_im,50);                            
+    bw5=bwlabel(diff_im,8);
+	
+	
+	
+    bound=lastframe ;                        
+    diff_im = imsubtract(bound(:,:,1), rgb2gray(bound));
+    diff_im=medfilt2(diff_im,[3 3]);
+    diff_im=im2bw(diff_im,0.1);
+    diff_im=bwareaopen(diff_im,50);                            
+    bw1=bwlabel(diff_im,8);
+                                 
+    diff_im = imsubtract(bound(:,:,2), rgb2gray(bound));
+    diff_im=medfilt2(diff_im,[3 3]);
+    diff_im=im2bw(diff_im,0.1);
+    diff_im=bwareaopen(diff_im,50);                            
+    bw2=bwlabel(diff_im,8);
+                                   
+    diff_im = imsubtract(bound(:,:,3), rgb2gray(bound));
+    diff_im=medfilt2(diff_im,[3 3]);
+    diff_im=im2bw(diff_im,0.1);
+    diff_im=bwareaopen(diff_im,50);                            
+    bw3=bwlabel(diff_im,8);
+
+
+
+bw4=bw1+bw2+bw3;        %bw4 is the image containg all elements in the image in white form
+cc5=normxcorr2(bw5(:,:,1),bw4(:,:,1));
+I=find(cc5 > 0.999 ) ;
+[yb,xb]=ind2sub(size(cc5),I);
+yb=yb-10-yspan/2;xb=xb-13-xspan/2;                               %%brick detection ends
+
+
+                      %% brick aiming starts 
+
+    xbs=sort(xb);
+	ybs=sort(yb);
+	paddlex=new_pos;
+	paddley=paddletop;
+    if b_direction>0            %%ball coming from left
+		                      %target left top brick
+		sy=size(ascy);sizey=sy(1)*sy(2);
+		targetby=ascy(sizey) ;
+		targetbx=leftb ;	
+		aim_angle=atan(( paddley-targetby-radius) /(paddlex-targetbx)) ;
+		rotation=(aim_angle+atan(b_direction))/2;
+		                               
+
+	elseif b_direction<0                  %%ball coming from right 
+                                   %%target right bottom brick
+		
+		b_direction=abs(b_direction);
+		sy=size(ascy);sizey=sy(1)*sy(2);
+		targetby=ascy(sizey) ;
+		targetbx=rightb ;
+		aim_angle=atan(abs( (paddley-targetby-radius) /(paddlex-targetbx-radius))) ;
+		rotation=3.14-(aim_angle+atan(b_direction))/2;
+		
+		b_direction = -b_direction;
+     else
+	 
+	 end
+				%% brick aiming ends here
+
+					 
+
+
+distance_moved=(new_pos-paddlecenter)/ratio;
+distance_moved=round(distance_moved);
+rotation=180*rotation/3.14;
+rotation=round(rotation);
+rotation=180-rotation;

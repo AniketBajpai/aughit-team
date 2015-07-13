@@ -1,0 +1,151 @@
+%type imaqhwinfo for device adaptor name, device id, supported formats, imaqhwinfo('winvideo') for further details
+% Access an image acquisition device (video object).
+vid=videoinput('winvideo',1,'RGB24_352x288');
+
+%vid(object name) or imaqhwinfo(vid) can be typed to get details
+&get(vid) & inspect(vid) can be used to view and change the values of image properties,
+%vid.Property or propinfo(vid,Property) to get specific information 
+%set object's TriggerType property to MANUAL
+triggerconfig(vid, 'Manual');
+
+% Configure object to capture every fifth frame.
+vid.FrameGrabInterval = 5;
+
+% Configure the number of frames to be logged.
+% nFrames=10;
+% vid.FramesPerTrigger = nFrames;
+
+% Access the device's video source.
+src=getselectedsource(vid);
+
+% Configure device to provide fifty=10*5 frames per second.
+% src.FrameRate = 50;
+
+%Open a live preview window. Dont know if it is necessary
+preview(vid);
+
+% Initiate the acquisition.
+start(vid);
+
+% Wait for data logging to finish before retrieving the data.
+wait(vid, 10);
+
+% Extract frames from memory.
+frames = getdata(vid);
+
+%Configure serial port
+a=serial('COM8');
+%Open serial port object
+fopen(a0);
+%Total pixels captured by camera
+%total_pixels=?*?; %Number of pixels in the image for each channel
+
+%M=0 means DC motor is OFF by default
+M=0
+
+%function to determine actions performed depending on state of M, 
+void move(int M){
+if(M==1) %move left
+
+a.digitalWrite(IN1,HIGH);
+a.digitalWrite(IN2,LOW);
+a.digitalWrite(IN3,HIGH);
+a.digitalWrite(IN4,LOW);
+
+if(M==0) %STOP 
+
+a.digitalWrite(IN1,LOW);
+a.digitalWrite(IN2,LOW);
+a.digitalWrite(IN3,LOW);
+a.digitalWrite(IN4,LOW);
+
+if(M==-1) %move right
+
+a.digitalWrite(IN1,LOW);
+a.digitalWrite(IN2,HIGH);
+a.digitalWrite(IN3,LOW);
+a.digitalWrite(IN4,HIGH);
+}
+
+%Infinite while loop
+while(1)
+%Trigger webcam    
+trigger(vid);
+%Get Image
+im=getdata(vid,1);
+%Display image
+imshow(im);
+%default value set to zero
+default=0;
+
+%Find centre of green ball
+%Extracting green portion
+imball=im(:,:,2);
+%Convert to binary with threshold 0.7
+bw1 = im2bw(imball,.7); 
+%find centre of white region(binary)
+bcenter = regionprops(bw1, 'Centroid');
+
+%Method 1 to find center of red paddle
+%Extracting red portion
+impaddle=im(:,:,1);
+%Convert to binary with threshold 0.7
+bw2 = im2bw(impaddle,.7); 
+%find centre of white region(binary)
+pcenter = regionprops(bw2, 'Centroid');
+
+%Method 2 to find center of red paddle
+%Image converted to ycbcr format from rgb since this format separates
+%intensity from color
+im_new=rgb2ycbcr(im);
+%figure;imshow(im_new(:,:,3));
+%size of image
+sz=size(im_new);
+m=sz(1,1);
+n=sz(1,2);
+%Creating a binary matrix binred. Value of an element is 1 only if color is
+%red for that position
+binred=zeros(m,n); 
+%num is number of pixels
+num=0; 
+%Center of red object initialized to (I,J)=(0,0)
+I=0;J=0;
+output='n'; 
+%Insider im_new image find red pixels by following loop
+for i=1:m 
+    for j=1:n 
+        %IF statement decides if pixel is only red
+        if(im_new(i,j,3)>180 && im_new(i,j,2)<140 )
+            %RGB sequence
+            binred(i,j)=1; num=num+1; 
+            I=I+i;
+            J=J+j;
+        end 
+    end 
+end
+%Find center of paddle
+I2=I/num;
+J2=J/num;
+%COnvert it to int
+pcenter=[int16(I2),int16(J2)];
+
+%If X coordinate of ball is to the right of paddle
+if(bcenter[1]>pceter[1])
+    M=-1;
+end
+
+%If X coordinate of ball is to the left of paddle
+else if(bcenter[1]<pceter[1])
+    M=1;
+end
+
+else
+	M=0;
+end
+
+%direct motor according to value of M
+move(M);	
+
+%These two commands clear video & serial object
+fclose(s);delete(s);clear s;
+stop(vid),delete(vid),clear vid;

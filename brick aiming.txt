@@ -1,0 +1,63 @@
+                      %% brick aiming starts 
+%{ b_direction   %%  to determine the direction of 1st shot
+ ascy=sort(yb);
+if b_direction>0            %%ball coming from left
+   firstshoty=ascy(size(ascy));
+   firstshotx=leftb ;
+ aim_angle=atan(( paddley-firstshoty-radius) /(paddlex-firstshotx-radius)) ;
+ firstrotation=1.57-(aim_angle+atan(b_direction))/2; %%anticlockwise from horizontal
+end
+
+if b_direction<0                  %%ball coming from right 
+    b_direction=abs(b_direction);
+   firstshoty=ascy(size(ascy)) ;
+   firstshotx=rightb ;
+ aim_angle=atan(abs( (paddley-firstshoty-radius) /(paddlex-firstshotx-radius))) ;
+ firstrotation=1.57-(aim_angle+atan(b_direction))/2; %%clockwise from horizontal
+end
+ 
+%%first shot ends  %}
+
+
+while(size(I)(1,1)>0)                                    %%aiming bricks one by one , or true!!
+{
+    xbs=sort(xb);
+	ybs=sort(yb);
+    if b_direction>0            %%ball coming from left
+                            %target left bottom brick
+	 	
+	i=1;y_xmin=[];
+	for x=xb
+		if  x==xbs(1) 
+		y_xmin=[y_xmin,i];
+		end
+	i=i+1;
+	end
+	max=0;
+	for j=i;
+		if(yb(j)>=max)
+		max=yb(j);
+		end
+	end
+    targetbx=xbs(1);
+	targetby=max;
+	aim_angle=atan(( paddley-targetby-radius) /(paddlex-targetbx-radius)) ;
+    rotation=1.57-(aim_angle+atan(b_direction))/2; %%anticlockwise from horizontal
+end
+
+ if b_direction<0                  %%ball coming from right 
+                                   %%target right bottom brick
+      b_direction=abs(b_direction);
+	  targetbx=xbs(1);
+	  targetby=ybs(1);
+	  aim_angle=atan(abs( (paddley-targetby-radius) /(paddlex-targetbx-radius))) ;
+      rotation=1.57-(aim_angle+atan(b_direction))/2; %%clockwise from horizontal
+	  
+ end       
+                     %% brick aiming ends here
+
+
+
+
+
+}
